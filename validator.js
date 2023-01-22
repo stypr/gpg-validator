@@ -37,21 +37,19 @@ This script reduces down some attack surfaces, but it still posesses some existi
         3. Check if validator matches with hostname, with https protocol
     */
     const validateNetwork = async () => {
-        let validatorHost = "gpg.harold.kim.";
-        let resolveHost = "stypr.github.io.";
-        let currLocationHost = window.location.hostname;
-        let networkResultDOM = document.querySelector(".network-result");
-
-        let dohURL = [
+        const validatorHost = "gpg.harold.kim.";
+        const resolveHost = "stypr.github.io.";
+        const dohURL = [
             "https://1.1.1.1/dns-query",
             "https://cloudflare-dns.com/dns-query",
             "https://dns.google/resolve"
         ];
-        let networkResult = {
+        const networkResult = {
             "doh": [],
             "dohCheck": -1,
         };
-
+        const currLocationHost = window.location.hostname;
+        const networkResultDOM = document.querySelector(".network-result");
         for(let dohHost of dohURL){
             networkResultDOM.innerText = `Fetching DoH resolvers...`;
             networkResult.doh.push(
@@ -77,10 +75,8 @@ This script reduces down some attack surfaces, but it still posesses some existi
         }
         networkResult.dohCheck = await (arr => arr.every(v => v && v === true))(networkResult.doh);
         networkResult.hostCheck = (currLocationHost+"." === validatorHost && self.location.protocol === "https:");
-
         networkResultDOM.innerHTML = networkResult.dohCheck === true && ` <font color=green>Resolver PASS</font> /` || ` <font color=red>Resolver FAIL</font> /`;
         networkResultDOM.innerHTML += networkResult.hostCheck === true && ` <font color=green>HostCheck PASS</font> /` || ` <font color=red>HostCheck FAIL</font> /`;
-
         networkResultDOM.innerHTML = networkResultDOM.innerHTML.slice(0, -1);
     };
 
@@ -95,55 +91,59 @@ This script reduces down some attack surfaces, but it still posesses some existi
         6. Validator verifies GitHub repositories' signatures
     */
      const validateKeys = async () => {
-        let checksumResultDOM = document.querySelector(".checksum-result");
-        let keyserverResultDOM = document.querySelector(".keyserver-result");
-
-        let pubkeyURL = {
-            "root": [
+        const checksumResultDOM = document.querySelector(".checksum-result");
+        const keyserverResultDOM = document.querySelector(".keyserver-result");
+        const gitResultDOM = document.querySelector(".git-result");
+        const pubkeyURL = {
+            "Root": [
                 "https://harold.kim/keys/root.pub.asc",
                 "https://raw.githubusercontent.com/stypr/stypr/main/keys/root.pub.asc",
                 "/keys/root.pub.asc"
             ],
-            "general": [
+            "General": [
                 "https://harold.kim/keys/general.pub.asc",
                 "https://raw.githubusercontent.com/stypr/stypr/main/keys/general.pub.asc",
                 "/keys/general.pub.asc"
             ],
-            "confidential": [
+            "Confidential": [
                 "https://harold.kim/keys/confidential.pub.asc",
                 "https://raw.githubusercontent.com/stypr/stypr/main/keys/confidential.pub.asc",
                 "/keys/confidential.pub.asc"
             ]
         };
-
-        let keyserverURL = {
-            "root": "https://keys.openpgp.org/vks/v1/by-fingerprint/2064FF9330111A9094B319DAB43975C459ED7A46",
-            "general": "https://keys.openpgp.org/vks/v1/by-fingerprint/4F3D0B5DA557FC3535ACEE3F87C4CD66A509906B",
-            "confidential": "https://keys.openpgp.org/vks/v1/by-fingerprint/9C1D006897CD998081C7A457F01CD491240E43A6"
+        const keyserverURL = {
+            "Root": "https://keys.openpgp.org/vks/v1/by-fingerprint/2064FF9330111A9094B319DAB43975C459ED7A46",
+            "General": "https://keys.openpgp.org/vks/v1/by-fingerprint/4F3D0B5DA557FC3535ACEE3F87C4CD66A509906B",
+            "Confidential": "https://keys.openpgp.org/vks/v1/by-fingerprint/9C1D006897CD998081C7A457F01CD491240E43A6"
         };
-
-        let pubkeyContent = {
-            "root": [],
-            "general": [],
-            "confidential": []
+        const pubkeyContent = {
+            "Root": [],
+            "General": [],
+            "Confidential": []
         };
-
-        let sha512sum = {
-            "root": "b3a0dfda3d93bba7798190c67d39613ecf332330aeebcee80a4f816dbbea6e685fe69bb45baa9eb2a55bcabcbfc38fc19ab59978b687efeb990b22acdd117ba2",
-            "general": "a55bb899a0e2dc1ed26b4d927d3823e357ba4f2b3b7fd83d9a1f6a24b16039641b02c4bb0c0e8700ea4a56f4585a937fe2de6e02d38a42177b1dc14dac9f2b80",
-            "confidential": "142ccfcfb7046cc2f532a865ab2cac827034f6730be354daed1e5b7f670254bf856400bcc66ce8bdf524f3ad4acfadcc4b53a46bb9be94a7fc7be68a11527fcc",
+        const sha512sum = {
+            "Root": "b3a0dfda3d93bba7798190c67d39613ecf332330aeebcee80a4f816dbbea6e685fe69bb45baa9eb2a55bcabcbfc38fc19ab59978b687efeb990b22acdd117ba2",
+            "General": "a55bb899a0e2dc1ed26b4d927d3823e357ba4f2b3b7fd83d9a1f6a24b16039641b02c4bb0c0e8700ea4a56f4585a937fe2de6e02d38a42177b1dc14dac9f2b80",
+            "Confidential": "142ccfcfb7046cc2f532a865ab2cac827034f6730be354daed1e5b7f670254bf856400bcc66ce8bdf524f3ad4acfadcc4b53a46bb9be94a7fc7be68a11527fcc",
         };
-
-        let pubkeyResult = {
-            "root": [-1, -1],
-            "general": [-1, -1],
-            "confidential": [-1, -1],
+        const pubkeyResult = {
+            "Root": [-1, -1],
+            "General": [-1, -1],
+            "Confidential": [-1, -1],
         };
-
-        checksumResultDOM.innerText = `Loading...`;
-        keyserverResultDOM.innerText = `Loading...`;
+        const repoNames = [
+            "stypr/gpg-validator",
+            "stypr/stypr",
+        ];
+        const gitResult = {
+            "commitData": [],
+            "commitResult": [],
+            "result": -1,
+        };
 
         // compare checksums, compare if keys are matching
+        checksumResultDOM.innerText = `Loading...`;
+        keyserverResultDOM.innerText = `Loading...`;
         for(let purpose in pubkeyURL){
             // check if pubkey matches with other files
             let currPubkeyURL = pubkeyURL[purpose];
@@ -170,9 +170,9 @@ This script reduces down some attack surfaces, but it still posesses some existi
             let contentResult  = await (arr => arr.every(v => v && v === arr[0]))(pubkeyContent[purpose]);
             pubkeyResult[purpose][0] = checksumResult && contentResult && currResult[0] === sha512sum[purpose];
         }
-        checksumResultDOM.innerText = `Loading...`;
 
         // compare with OpenPGP keyserver
+        checksumResultDOM.innerText = `Loading...`;
         for(let purpose in pubkeyURL){
             keyserverResultDOM.innerText = `Fetching ${purpose} from keyserver...`;
             // get my public key
@@ -182,7 +182,6 @@ This script reduces down some attack surfaces, but it still posesses some existi
                 .then(r => r.text())
                 .then(r => r)
                 .catch(e => "");
-
             // compare them!
             try{
                 let currMyPublicKey = await openpgp.readKey({ armoredKey: currMyPubkeyContent });
@@ -200,18 +199,17 @@ This script reduces down some attack surfaces, but it still posesses some existi
             }
         }
 
-        let gitResultDOM = document.querySelector(".git-result");
-        // check if commits are signed properly
-        let repoNames = [
-            "stypr/gpg-validator",
-            "stypr/stypr",
-        ]
+        // populate result
+        checksumResultDOM.innerHTML = ``;
+        keyserverResultDOM.innerHTML = ``;
+        for(let purpose in keyserverURL){
+            checksumResultDOM.innerHTML += pubkeyResult[purpose][0] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
+            keyserverResultDOM.innerHTML += pubkeyResult[purpose][1] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
+        };
+        checksumResultDOM.innerHTML = checksumResultDOM.innerHTML.slice(0, -1);
+        keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);
 
-        let gitResult = {
-            "commitData": [],
-            "commitResult": [],
-            "result": -1,
-        }
+        // check if commits are signed properly
         for(let repoName of repoNames){
             // fetch results from git first
             gitResultDOM.innerHTML = `Fetching ${repoName} from GitHub...`;
@@ -253,23 +251,13 @@ This script reduces down some attack surfaces, but it still posesses some existi
             isRatelimit = await (arr => arr.some(v => v && v === -1))(gitResult.commitResult);
 
             if(isSafe){
-                gitResultDOM.innerHTML = `<font color=green>commit signature PASS</font>`;
+                gitResultDOM.innerHTML = `<font color=green>Commit Signature PASS</font>`;
             }else if (isRatelimit){
-                gitResultDOM.innerHTML = `<font color=yellow>RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
+                gitResultDOM.innerHTML = `<font color=yellow>Commit Signature RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
             }else{
-                gitResultDOM.innerHTML = `<font color=red>commit signature FAIL</font>`;
+                gitResultDOM.innerHTML = `<font color=red>Commit Signature FAIL</font>`;
             }
         }
-
-        // populate result
-        checksumResultDOM.innerHTML = ``;
-        keyserverResultDOM.innerHTML = ``;
-        for(let purpose in keyserverURL){
-            checksumResultDOM.innerHTML += pubkeyResult[purpose][0] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
-            keyserverResultDOM.innerHTML += pubkeyResult[purpose][1] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
-        };
-        checksumResultDOM.innerHTML = checksumResultDOM.innerHTML.slice(0, -1);
-        keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);        
     };
 
     try{
