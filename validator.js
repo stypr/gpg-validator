@@ -1,12 +1,121 @@
-if(window.crypto){
-    (async () => {
+/*
+
+            d8                           
+    d88~\ _d88__ Y88b  / 888-~88e  888-~\
+   C888    888    Y888/  888  888b 888   
+    Y88b   888     Y8/   888  8888 888   
+     888D  888      Y    888  888P 888   
+   \_88P   "88_/   /     888-_88"  888   
+                 _/      888             
+
+            Copyright https://harold.kim/
+            Respective copyrights apply.
+
+
+This script is used to validate the network connection and GPG keys of https://harold.kim/.
+This script reduces down some attack surfaces, but it still posesses some existing issues such as:
+
+1. potential MitM attacks on HTTPS.
+    * There is no way for JavaScript to interact and detect bogus certificates.
+    * Could be mitigated by Common Sense 2022.
+    * Use https://crt.sh/?q=gpg.harold.kim to cross-check with CT logs.
+    * Check the website from PCs and Mobile networks with different ISPs/Carriers/VPNs.
+
+2. GitHub Page gets compromised. or Malicious actor is GitHub itself
+    * GitHub Security Team might notice if some breach ever happens.
+    * But there were security reports which successfully attacked GitHub Pages.
+    * You can perhaps send mail to the person directly or meet physically to confirm the fingerprint.
+
+TODO:
+1. Verify signed commits of the current repository
+
+*/
+
+(async () => {
+    /*
+        Validating Network Connections
+
+        1. Query DoH over Cloudflare and Google DNS
+        2. Check if validator is resolved to GitHub Pages
+        3. Check if validator matches with hostname, with https protocol
+    */
+    const validateNetwork = async () => {
+        let validatorHost = "gpg.harold.kim.";
+        let resolveHost = "stypr.github.io.";
+        let currLocationHost = window.location.hostname;
+        let networkResultDOM = document.querySelector(".network-result");
+
+        let dohURL = [
+            "https://1.1.1.1/dns-query",
+            "https://cloudflare-dns.com/dns-query",
+            "https://dns.google/resolve"
+        ];
+        let networkResult = {
+            "doh": [],
+            "dohCheck": -1,
+        };
+
+        for(let dohHost of dohURL){
+            networkResultDOM.innerText = `Fetching DoH resolvers...`;
+            networkResult.doh.push(
+                await fetch(
+                    `${dohHost}?name=${validatorHost}&type=CNAME&do=1`,
+                    {
+                        cache: "no-store",
+                        headers: {"accept": "application/dns-json"}
+                    }
+                )
+                .then(r => r.json())
+                .then(r => {
+                    return (
+                        r.Status == 0 && // NOERROR
+                        r.RA == 1 &&  // DNSSEC Enabled
+                        r.Answer[0].data == resolveHost // Resolved to GitHub Pges
+                    )
+                })
+                .catch(r => {
+                    return false;
+                })
+            );
+        }
+        networkResult.dohCheck = await (arr => arr.every(v => v && v === true))(networkResult.doh);
+        networkResult.hostCheck = (currLocationHost+"." === validatorHost && self.location.protocol === "https:");
+
+        networkResultDOM.innerHTML = networkResult.dohCheck === true && ` <font color=green>Resolver PASS</font> /` || ` <font color=red>Resolver FAIL</font> /`;
+        networkResultDOM.innerHTML += networkResult.hostCheck === true && ` <font color=green>HostCheck PASS</font> /` || ` <font color=red>HostCheck FAIL</font> /`;
+
+        networkResultDOM.innerHTML = networkResultDOM.innerHTML.slice(0, -1);
+    };
+
+    /*
+        Validating GPG Keys
+
+        1. Validator crawls keys from stypr/stypr, stypr/gpg-validator and https://harold.kim respectively
+        2. Validator checks if all keys from the same group are matching to each other
+        3. Validator checks if cheksum of each key from the group matches with the predefined sha512sum
+        4. Validator crawls keys from OpenPGP keyserver
+        5. Validator checks if fingerprints, group order, and key id match with the crawled keys from step (1).
+    */
+     const validateKeys = async () => {
         let checksumResultDOM = document.querySelector(".checksum-result");
         let keyserverResultDOM = document.querySelector(".keyserver-result");
 
         let pubkeyURL = {
-            "root": ["https://harold.kim/keys/root.pub.asc", "/keys/root.pub.asc", "https://raw.githubusercontent.com/stypr/stypr/main/keys/root.pub.asc"],
-            "general": ["https://harold.kim/keys/general.pub.asc", "/keys/general.pub.asc", "https://raw.githubusercontent.com/stypr/stypr/main/keys/general.pub.asc"],
-            "confidential": ["https://harold.kim/keys/confidential.pub.asc", "/keys/confidential.pub.asc", "https://raw.githubusercontent.com/stypr/stypr/main/keys/confidential.pub.asc"]
+            "root": [
+                "https://harold.kim/keys/root.pub.asc",
+                "https://raw.githubusercontent.com/stypr/stypr/main/keys/root.pub.asc",
+                "/keys/root.pub.asc"
+            ],
+            "general": [
+                "https://harold.kim/keys/general.pub.asc",
+                "https://raw.githubusercontent.com/stypr/stypr/main/keys/general.pub.asc",
+                "/keys/general.pub.asc"
+            ],
+            "confidential": [
+                "https://harold.kim/keys/confidential.pub.asc",
+                "https://raw.githubusercontent.com/stypr/stypr/main/keys/confidential.pub.asc",
+                "/keys/confidential.pub.asc"
+            ]
         };
 
         let keyserverURL = {
@@ -65,13 +174,12 @@ if(window.crypto){
         }
         checksumResultDOM.innerText = `Loading...`;
 
-        // compare with Ubuntu keyserver
+        // compare with OpenPGP keyserver
         for(let purpose in keyserverURL){
+            keyserverResultDOM.innerText = `Fetching ${purpose} from keyserver...`;
             // get my public key
             let currMyPubkeyContent = pubkeyContent[purpose][0];
             // get my public key from keyserver
-            keyserverResultDOM.innerText = `Fetching ${purpose} from keyserver...`;
-
             let currKeyserverContent = await fetch(keyserverURL[purpose], {cache: "no-store"})
                 .then(r => r.text())
                 .then(r => r)
@@ -83,14 +191,13 @@ if(window.crypto){
                 let currKeyserverPublicKey = await openpgp.readKey({ armoredKey: currKeyserverContent });
 
                 keyserverResultDOM.innerText = `Comparing ${purpose} from keyserver...`;
-    			pubkeyResult[purpose][1] = (
-	    			currMyPublicKey.keyPacket.keyID.bytes === currKeyserverPublicKey.keyPacket.keyID.bytes &&
+                pubkeyResult[purpose][1] = (
+                    currMyPublicKey.keyPacket.keyID.bytes === currKeyserverPublicKey.keyPacket.keyID.bytes &&
                     JSON.stringify(currMyPublicKey.keyPacket.fingerprint) === JSON.stringify(currKeyserverPublicKey.keyPacket.fingerprint) &&
                     JSON.stringify(currMyPublicKey.keyPacket.publicParams.Q) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.Q) &&
                     JSON.stringify(currMyPublicKey.keyPacket.publicParams.oid.oid) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.oid.oid)
-		    	);
+                );
             }catch(e){
-                console.log(e);
                 pubkeyResult[purpose][1] = false;
             }
         }
@@ -104,5 +211,8 @@ if(window.crypto){
         };
         checksumResultDOM.innerHTML = checksumResultDOM.innerHTML.slice(0, -1);
         keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);
-    })()
-}
+    };
+
+    validateKeys();
+    validateNetwork();
+})();
