@@ -26,9 +26,6 @@ This script reduces down some attack surfaces, but it still posesses some existi
     * But there were security reports which successfully attacked GitHub Pages.
     * You can perhaps send mail to the person directly or meet physically to confirm the fingerprint.
 
-TODO:
-1. Verify signed commits of the current repository
-
 */
 
 (async () => {
@@ -73,7 +70,7 @@ TODO:
                         r.Answer[0].data == resolveHost // Resolved to GitHub Pges
                     )
                 })
-                .catch(r => {
+                .catch(e => {
                     return false;
                 })
             );
@@ -95,6 +92,7 @@ TODO:
         3. Validator checks if cheksum of each key from the group matches with the predefined sha512sum
         4. Validator crawls keys from OpenPGP keyserver
         5. Validator checks if fingerprints, group order, and key id match with the crawled keys from step (1).
+        6. Validator verifies GitHub repositories' signatures
     */
      const validateKeys = async () => {
         let checksumResultDOM = document.querySelector(".checksum-result");
@@ -160,7 +158,7 @@ TODO:
                         pubkeyContent[purpose].push(r);
                         currResult.push(sha512(r));
                     })
-                    .catch(r => {
+                    .catch(e => {
                         pubkeyContent[purpose].push("");
                         currResult.push("");
                     });
@@ -175,7 +173,7 @@ TODO:
         checksumResultDOM.innerText = `Loading...`;
 
         // compare with OpenPGP keyserver
-        for(let purpose in keyserverURL){
+        for(let purpose in pubkeyURL){
             keyserverResultDOM.innerText = `Fetching ${purpose} from keyserver...`;
             // get my public key
             let currMyPubkeyContent = pubkeyContent[purpose][0];
@@ -183,7 +181,7 @@ TODO:
             let currKeyserverContent = await fetch(keyserverURL[purpose], {cache: "no-store"})
                 .then(r => r.text())
                 .then(r => r)
-                .catch(r => "");
+                .catch(e => "");
 
             // compare them!
             try{
@@ -202,6 +200,67 @@ TODO:
             }
         }
 
+        let gitResultDOM = document.querySelector(".git-result");
+        // check if commits are signed properly
+        let repoNames = [
+            "stypr/gpg-validator",
+            "stypr/stypr",
+        ]
+
+        let gitResult = {
+            "commitData": [],
+            "commitResult": [],
+            "result": -1,
+        }
+        for(let repoName of repoNames){
+            // fetch results from git first
+            gitResultDOM.innerHTML = `Fetching ${repoName} from GitHub...`;
+            gitResult.commitData.push(
+                await fetch(
+                    `https://api.github.com/repos/${repoName}/commits/main`,
+                    {
+                        cache: "no-store",
+                    }
+                )
+                .then(r => r.json())
+                .then(r => r.commit)
+                .catch(r => {})
+            );
+
+            gitResultDOM.innerHTML = `Verifying Commit signature of ${repoName}...`;
+            for(let commit of gitResult.commitData){
+                isVerified = false;
+                for(let purpose in pubkeyURL){
+                    try{
+                        let verificationResult = await openpgp.verify({
+                            message: await openpgp.createMessage({ text: commit.verification.payload }),
+                            signature: await openpgp.readSignature({ armoredSignature: commit.verification.signature }),
+                            verificationKeys: await openpgp.readKey({ armoredKey: pubkeyContent[purpose][0] })
+                        });
+                        verificationResult = await verificationResult.signatures[0].verified;
+                        if(verificationResult === true && commit.verification.verified === true){
+                            isVerified = true;
+                            break;
+                        }
+                    }catch(e){
+                        isVerified = -1;
+                    }
+                }
+                gitResult.commitResult.push(isVerified);
+            };
+
+            isSafe = await (arr => arr.every(v => v && v === true))(gitResult.commitResult);
+            isRatelimit = await (arr => arr.some(v => v && v === -1))(gitResult.commitResult);
+
+            if(isSafe){
+                gitResultDOM.innerHTML = `<font color=green>commit signature PASS</font>`;
+            }else if (isRatelimit){
+                gitResultDOM.innerHTML = `<font color=yellow>RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
+            }else{
+                gitResultDOM.innerHTML = `<font color=red>commit signature FAIL</font>`;
+            }
+        }
+
         // populate result
         checksumResultDOM.innerHTML = ``;
         keyserverResultDOM.innerHTML = ``;
@@ -210,9 +269,13 @@ TODO:
             keyserverResultDOM.innerHTML += pubkeyResult[purpose][1] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
         };
         checksumResultDOM.innerHTML = checksumResultDOM.innerHTML.slice(0, -1);
-        keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);
+        keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);        
     };
 
-    validateKeys();
-    validateNetwork();
+    try{
+        validateKeys();
+        validateNetwork();
+    }catch(e){
+        alert("Unexpected error occured. It is likely that you're under an attack. It may be caused by slow internet connections.");
+    }
 })();
