@@ -27,7 +27,6 @@ This script reduces down some attack surfaces, but it still posesses some existi
     * You can perhaps send mail to the person directly or meet physically to confirm the fingerprint.
 
 */
-
 (async () => {
     /*
         Validating Network Connections
@@ -50,21 +49,22 @@ This script reduces down some attack surfaces, but it still posesses some existi
         };
         const currLocationHost = window.location.hostname;
         const networkResultDOM = document.querySelector(".network-result");
-        for(let dohHost of dohURL){
+        for (let dohHost of dohURL) {
             networkResultDOM.innerText = `Fetching DoH resolvers...`;
             networkResult.doh.push(
                 await fetch(
-                    `${dohHost}?name=${validatorHost}&type=CNAME&do=1`,
-                    {
+                    `${dohHost}?name=${validatorHost}&type=CNAME&do=1`, {
                         cache: "no-store",
-                        headers: {"accept": "application/dns-json"}
+                        headers: {
+                            "accept": "application/dns-json"
+                        }
                     }
                 )
                 .then(r => r.json())
                 .then(r => {
                     return (
                         r.Status == 0 && // NOERROR
-                        r.RA == 1 &&  // DNSSEC Enabled
+                        r.RA == 1 && // DNSSEC Enabled
                         r.Answer[0].data == resolveHost // Resolved to GitHub Pges
                     )
                 })
@@ -74,7 +74,7 @@ This script reduces down some attack surfaces, but it still posesses some existi
             );
         }
         networkResult.dohCheck = await (arr => arr.every(v => v && v === true))(networkResult.doh);
-        networkResult.hostCheck = (currLocationHost+"." === validatorHost && self.location.protocol === "https:");
+        networkResult.hostCheck = (currLocationHost + "." === validatorHost && self.location.protocol === "https:");
         networkResultDOM.innerHTML = networkResult.dohCheck === true && ` <font color=green>Resolver PASS</font> /` || ` <font color=red>Resolver FAIL</font> /`;
         networkResultDOM.innerHTML += networkResult.hostCheck === true && ` <font color=green>HostCheck PASS</font> /` || ` <font color=red>HostCheck FAIL</font> /`;
         networkResultDOM.innerHTML = networkResultDOM.innerHTML.slice(0, -1);
@@ -90,7 +90,7 @@ This script reduces down some attack surfaces, but it still posesses some existi
         5. Validator checks if fingerprints, group order, and key id match with the crawled keys from step (1).
         6. Validator verifies GitHub repositories' signatures
     */
-     const validateKeys = async () => {
+    const validateKeys = async () => {
         const checksumResultDOM = document.querySelector(".checksum-result");
         const keyserverResultDOM = document.querySelector(".keyserver-result");
         const gitResultDOM = document.querySelector(".git-result");
@@ -144,14 +144,16 @@ This script reduces down some attack surfaces, but it still posesses some existi
         // compare checksums, compare if keys are matching
         checksumResultDOM.innerText = `Loading...`;
         keyserverResultDOM.innerText = `Loading...`;
-        for(let purpose in pubkeyURL){
+        for (let purpose in pubkeyURL) {
             // check if pubkey matches with other files
             let currPubkeyURL = pubkeyURL[purpose];
             let currResult = [];
-            for(let pubkey of currPubkeyURL){
+            for (let pubkey of currPubkeyURL) {
                 checksumResultDOM.innerText = `Fetching ${purpose}...`;
                 keyserverResultDOM.innerText = `Fetching ${purpose}...`;
-                await fetch(pubkey, {cache: "no-store"})
+                await fetch(pubkey, {
+                        cache: "no-store"
+                    })
                     .then(r => r.text())
                     .then(r => {
                         // push content and checksums to array
@@ -167,25 +169,31 @@ This script reduces down some attack surfaces, but it still posesses some existi
             // compare if all keys contents and checksums match
             checksumResultDOM.innerText = `Comparing checksums of ${purpose}...`;
             let checksumResult = await (arr => arr.every(v => v && v === arr[0]))(currResult);
-            let contentResult  = await (arr => arr.every(v => v && v === arr[0]))(pubkeyContent[purpose]);
+            let contentResult = await (arr => arr.every(v => v && v === arr[0]))(pubkeyContent[purpose]);
             pubkeyResult[purpose][0] = checksumResult && contentResult && currResult[0] === sha512sum[purpose];
         }
 
         // compare with OpenPGP keyserver
         checksumResultDOM.innerText = `Loading...`;
-        for(let purpose in pubkeyURL){
+        for (let purpose in pubkeyURL) {
             keyserverResultDOM.innerText = `Fetching ${purpose} from keyserver...`;
             // get my public key
             let currMyPubkeyContent = pubkeyContent[purpose][0];
             // get my public key from keyserver
-            let currKeyserverContent = await fetch(keyserverURL[purpose], {cache: "no-store"})
+            let currKeyserverContent = await fetch(keyserverURL[purpose], {
+                    cache: "no-store"
+                })
                 .then(r => r.text())
                 .then(r => r)
                 .catch(e => "");
             // compare them!
-            try{
-                let currMyPublicKey = await openpgp.readKey({ armoredKey: currMyPubkeyContent });
-                let currKeyserverPublicKey = await openpgp.readKey({ armoredKey: currKeyserverContent });
+            try {
+                let currMyPublicKey = await openpgp.readKey({
+                    armoredKey: currMyPubkeyContent
+                });
+                let currKeyserverPublicKey = await openpgp.readKey({
+                    armoredKey: currKeyserverContent
+                });
 
                 keyserverResultDOM.innerText = `Comparing ${purpose} from keyserver...`;
                 pubkeyResult[purpose][1] = (
@@ -194,7 +202,7 @@ This script reduces down some attack surfaces, but it still posesses some existi
                     JSON.stringify(currMyPublicKey.keyPacket.publicParams.Q) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.Q) &&
                     JSON.stringify(currMyPublicKey.keyPacket.publicParams.oid.oid) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.oid.oid)
                 );
-            }catch(e){
+            } catch (e) {
                 pubkeyResult[purpose][1] = false;
             }
         }
@@ -202,7 +210,7 @@ This script reduces down some attack surfaces, but it still posesses some existi
         // populate result
         checksumResultDOM.innerHTML = ``;
         keyserverResultDOM.innerHTML = ``;
-        for(let purpose in keyserverURL){
+        for (let purpose in keyserverURL) {
             checksumResultDOM.innerHTML += pubkeyResult[purpose][0] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
             keyserverResultDOM.innerHTML += pubkeyResult[purpose][1] === true && ` <font color=green>${purpose} PASS</font> /` || ` <font color=red>${purpose} FAIL</font> /`;
         };
@@ -210,60 +218,70 @@ This script reduces down some attack surfaces, but it still posesses some existi
         keyserverResultDOM.innerHTML = keyserverResultDOM.innerHTML.slice(0, -1);
 
         // check if commits are signed properly
-        for(let repoName of repoNames){
+        for (let repoName of repoNames) {
             // fetch results from git first
             gitResultDOM.innerHTML = `Fetching ${repoName} from GitHub...`;
             gitResult.commitData.push(
                 await fetch(
-                    `https://api.github.com/repos/${repoName}/commits/main`,
-                    {
+                    `https://api.github.com/repos/${repoName}/commits/main`, {
                         cache: "no-store",
                     }
                 )
                 .then(r => r.json())
                 .then(r => r.commit)
-                .catch(r => {})
             );
+        }
 
-            gitResultDOM.innerHTML = `Verifying Commit signature of ${repoName}...`;
-            for(let commit of gitResult.commitData){
-                isVerified = false;
-                for(let purpose in pubkeyURL){
-                    try{
-                        let verificationResult = await openpgp.verify({
-                            message: await openpgp.createMessage({ text: commit.verification.payload }),
-                            signature: await openpgp.readSignature({ armoredSignature: commit.verification.signature }),
-                            verificationKeys: await openpgp.readKey({ armoredKey: pubkeyContent[purpose][0] })
-                        });
-                        verificationResult = await verificationResult.signatures[0].verified;
-                        if(verificationResult === true && commit.verification.verified === true){
-                            isVerified = true;
-                            break;
-                        }
-                    }catch(e){
-                        isVerified = -1;
-                    }
-                }
+
+        gitResultDOM.innerHTML = `Verifying Commit Signatures...`;
+        for (let commit of gitResult.commitData) {
+            let isVerified = false;
+            if(commit === undefined && !commit){
+                isVerified = -1;
                 gitResult.commitResult.push(isVerified);
-            };
-
-            isSafe = await (arr => arr.every(v => v && v === true))(gitResult.commitResult);
-            isRatelimit = await (arr => arr.some(v => v && v === -1))(gitResult.commitResult);
-
-            if(isSafe){
-                gitResultDOM.innerHTML = `<font color=green>Commit Signature PASS</font>`;
-            }else if (isRatelimit){
-                gitResultDOM.innerHTML = `<font color=yellow>Commit Signature RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
-            }else{
-                gitResultDOM.innerHTML = `<font color=red>Commit Signature FAIL</font>`;
+                continue;
             }
+            for (let purpose in pubkeyURL) {
+                try {
+                    let verificationResult = await openpgp.verify({
+                        message: await openpgp.createMessage({
+                            text: commit.verification.payload
+                        }),
+                        signature: await openpgp.readSignature({
+                            armoredSignature: commit.verification.signature
+                        }),
+                        verificationKeys: await openpgp.readKey({
+                            armoredKey: pubkeyContent[purpose][0]
+                        })
+                    });
+                    verificationResult = await verificationResult.signatures[0].verified;
+                    if (verificationResult === true && commit.verification.verified === true) {
+                        isVerified = true;
+                        break;
+                    }
+                } catch (e) {
+                    isVerified = false;
+                }
+            }
+            gitResult.commitResult.push(isVerified);
+        };
+
+        isSafe = await (arr => arr.every(v => v && v === true))(gitResult.commitResult) && gitResult.commitResult.length >= 1;
+        isRatelimit = await (arr => arr.some(v => v && v === -1))(gitResult.commitResult) && gitResult.commitResult.length >= 1;
+
+        if (isSafe) {
+            gitResultDOM.innerHTML = `<font color=green>Commit Signature PASS</font>`;
+        } else if (isRatelimit) {
+            gitResultDOM.innerHTML = `<font color=yellow>Commit Signature RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
+        } else {
+            gitResultDOM.innerHTML = `<font color=red>Commit Signature FAIL</font>`;
         }
     };
 
-    try{
+    try {
         validateKeys();
         validateNetwork();
-    }catch(e){
+    } catch (e) {
         alert("Unexpected error occured. It is likely that you're under an attack. It may be caused by slow internet connections.");
     }
 })();

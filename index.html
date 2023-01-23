@@ -24,6 +24,8 @@
         ::-webkit-scrollbar { width: 13px; }
         ::-webkit-scrollbar-track { background-color: #111; }
         ::-webkit-scrollbar-thumb { background-image: linear-gradient(180deg, #999 0%, #aaa 99%); box-shadow: inset 2px 2px 5px 0 rgba(255,255,255,0.5); }
+        .warning { border: 1px solid #ccc; width: fit-content; padding: 10px; background: #eee; color: #000; }
+        .warning a { color: #000; }
     </style>
 </head>
 
@@ -32,7 +34,7 @@
         <h1>gpg.harold.kim</h1>
         <p>
             Use GPG for sending confidential messages and contents.
-            (<a href="//github.com/stypr/gpg-validator/blob/main/validator.js">sourcecode</a>)
+            (<a target="_blank" href="//github.com/stypr/gpg-validator/blob/main/validator.js">sourcecode</a>)
         </p>
         <h2>Keys</h2>
         <ul>
@@ -48,11 +50,12 @@
             </li>
         </ul>
         <h2>Validator</h2>
-
-        The result should NEVER DISPLAY IN <span style="color: red">RED COLOR</span>.<br>
-        Validator reduces the attack surface, but this doesn't mean <a href="//robertchen.cc/blog/2021/04/03/github-pages-xss">it's completely secure</a>.<br>
+        <p class="warning">
+            THE RESULT SHOULD NEVER DISPLAY IN <span style="color: red">RED COLOR</span>.<br>
+            Validator reduces down the attack surface, but this doesn't mean <a target="_blank" href="//robertchen.cc/blog/2021/04/03/github-pages-xss">it's completely secure</a>.<br>
+        </p>
         <ul>
-            <li><code>Connection safe: <noscript>[You must enable JavaScript to compare checksums.]</noscript><span class="network-result">...</span></code></li>
+            <li><code>Connection safe: <noscript>[You must enable JavaScript to check connection safety.]</noscript><span class="network-result">...</span></code></li>
             <li><code>Checksums match: <noscript>[You must enable JavaScript to compare checksums.]</noscript><span class="checksum-result">...</span></code></li>
             <li><code>Keyserver match: <noscript>[You must enable JavaScript to compare public keys with keyservers]</noscript><span class="keyserver-result">...</span></code></li>
             <li><code>Signature match: <noscript>[You must enable JavaScript to compare commit signatures from GitHub]</noscript><span class="git-result">...</span></code></li>
