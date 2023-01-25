@@ -15,25 +15,31 @@
 This script is used to validate the network connection and GPG keys of https://harold.kim/.
 This script reduces down some attack surfaces, but it still posesses some existing issues such as:
 
-1. potential MitM attacks on HTTPS.
-    * There is no way for JavaScript to interact and detect bogus certificates.
-    * Could be mitigated by Common Sense 2022.
-    * Use https://crt.sh/?q=gpg.harold.kim to cross-check with CT logs.
-    * Check the website from PCs and Mobile networks with different ISPs/Carriers/VPNs.
+1. Potential MitM attacks on HTTPS
+    * Reason
+        * There is no technical way for JavaScript to interact with browsers to detect bogus certificates.
+        * The script itself is already meaningless if the bogus certificate passed the browser's validation check.
+    * Mitigation
+        * Common Sense 2023
+        * Use CT Logs (https://crt.sh/?q=gpg.harold.kim)
+        * Check websites from both PCs and Mobiles. Access from ISPs/Carriers/VPNs/Tor/etc.
 
-2. GitHub Page gets compromised. or Malicious actor is GitHub itself
-    * GitHub Security Team might notice if some breach ever happens.
-    * But there were security reports which successfully attacked GitHub Pages.
-    * You can perhaps send mail to the person directly or meet physically to confirm the fingerprint.
+2. GitHub / GitHub Page gets compromised. or Malicious actor is GitHub itself
+    * Reason
+        * GitHub Pages has records of bugbounty reports for Cache Poisoning, XSS, etc.
+        * GitHub itself is targetting you (extremely unlikely though)
+    * Mitigation
+        * Meet in person and verify the fingerprint.
+        * Or, use other methods to verify the fingerprint, such as fetching from URLs in the code, compare phyiscally
 
 */
 (async () => {
     /*
         Validating Network Connections
 
-        1. Query DoH over Cloudflare and Google DNS
-        2. Check if validator is resolved to GitHub Pages
-        3. Check if validator matches with hostname, with https protocol
+        1. Sends DoH requests over Cloudflare and Google DNS
+        2. Checks if validator is resolved to GitHub Pages
+        3. Checks if validator matches with hostname, with https protocol
     */
     const validateNetwork = async () => {
         const validatorHost = "gpg.harold.kim.";
@@ -83,12 +89,12 @@ This script reduces down some attack surfaces, but it still posesses some existi
     /*
         Validating GPG Keys
 
-        1. Validator crawls keys from stypr/stypr, stypr/gpg-validator and https://harold.kim respectively
-        2. Validator checks if all keys from the same group are matching to each other
-        3. Validator checks if cheksum of each key from the group matches with the predefined sha512sum
-        4. Validator crawls keys from OpenPGP keyserver
-        5. Validator checks if fingerprints, group order, and key id match with the crawled keys from step (1).
-        6. Validator verifies GitHub repositories' signatures
+        1. Crawls keys from stypr/stypr, stypr/gpg-validator and https://harold.kim respectively
+        2. Checks if all keys from the same group are matching to each other
+        3. Checks if cheksum of each key from the group matches with the predefined sha512sum
+        4. Crawls keys from OpenPGP keyserver
+        5. Checks if fingerprints, group order, and key id match with the crawled keys from step (1).
+        6. Verifies GitHub repositories' signatures
     */
     const validateKeys = async () => {
         const checksumResultDOM = document.querySelector(".checksum-result");
@@ -270,11 +276,11 @@ This script reduces down some attack surfaces, but it still posesses some existi
         isRatelimit = await (arr => arr.some(v => v && v === -1))(gitResult.commitResult) && gitResult.commitResult.length >= 1;
 
         if (isSafe) {
-            gitResultDOM.innerHTML = `<font color=green>Commit Signature PASS</font>`;
+            gitResultDOM.innerHTML = `<font color=green>Git Commit Signature PASS</font>`;
         } else if (isRatelimit) {
-            gitResultDOM.innerHTML = `<font color=yellow>Commit Signature RATELIMTIED. Verify repositories manually to ensure that commit signatures are verified.</font>`;
+            gitResultDOM.innerHTML = `<font color=yellow>GitHub API Ratelimited. Verify repositories manually to ensure that commit signatures are verified.</font>`;
         } else {
-            gitResultDOM.innerHTML = `<font color=red>Commit Signature FAIL</font>`;
+            gitResultDOM.innerHTML = `<font color=red>Git Commit Signature FAIL</font>`;
         }
     };
 
