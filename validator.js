@@ -100,6 +100,7 @@ This script reduces down some attack surfaces, but it still posesses some existi
         const checksumResultDOM = document.querySelector(".checksum-result");
         const keyserverResultDOM = document.querySelector(".keyserver-result");
         const gitResultDOM = document.querySelector(".git-result");
+        const issuerResultDOM = document.querySelector(".issuer-result");
         const pubkeyURL = {
             "Root": [
                 "https://harold.kim/keys/root.pub.asc",
@@ -146,6 +147,10 @@ This script reduces down some attack surfaces, but it still posesses some existi
             "commitResult": [],
             "result": -1,
         };
+        const issuerResult = {
+            "General": -1,
+            "Confidential": -1,
+        }
 
         // compare checksums, compare if keys are matching
         checksumResultDOM.innerText = `Loading...`;
@@ -179,6 +184,36 @@ This script reduces down some attack surfaces, but it still posesses some existi
             pubkeyResult[purpose][0] = checksumResult && contentResult && currResult[0] === sha512sum[purpose];
         }
 
+        // check if issuer of key is valid (somewhat written in rfc4880?)
+        issuerResultDOM.innerText = `Loading...`;
+        let rootKey = {};
+        try{
+            rootKey = (await openpgp.readKey({ armoredKey: pubkeyContent.Root[0] })).keyPacket;
+        } catch(e) { };
+        try{
+            issuerResultDOM.innerText = `Checking General's Issuer...`;
+            let generalKey = (await openpgp.readKey({ armoredKey: pubkeyContent.General[0] })).users[0].otherCertifications[0];
+            issuerResult.General = (
+                JSON.stringify(rootKey.fingerprint) === JSON.stringify(generalKey.issuerFingerprint) &&
+                rootKey.keyID.bytes === generalKey.issuerKeyID.bytes
+            );
+        } catch(e) {
+            issuerResult.General = false;
+        };
+        try{
+            issuerResultDOM.innerText = `Checking Confidential's Issuer...`;
+            let confidentialKey = (await openpgp.readKey({ armoredKey: pubkeyContent.Confidential[0] })).users[0].otherCertifications[0];
+            issuerResult.Confidential = (
+                JSON.stringify(rootKey.fingerprint) === JSON.stringify(confidentialKey.issuerFingerprint) &&
+                rootKey.keyID.bytes === confidentialKey.issuerKeyID.bytes
+            );
+        } catch(e) {
+            issuerResult.Confidential = false;
+        };
+
+        issuerResultDOM.innerHTML =  issuerResult.General === true && `<font color=green>General PASS</font> /` || `<font color=red>General FAIL</font>`;
+        issuerResultDOM.innerHTML +=  issuerResult.Confidential === true && ` <font color=green>Confidential PASS</font>` || ` <font color=red>Confidential FAIL</font>`;
+
         // compare with OpenPGP keyserver
         checksumResultDOM.innerText = `Loading...`;
         for (let purpose in pubkeyURL) {
@@ -194,19 +229,15 @@ This script reduces down some attack surfaces, but it still posesses some existi
                 .catch(e => "");
             // compare them!
             try {
-                let currMyPublicKey = await openpgp.readKey({
-                    armoredKey: currMyPubkeyContent
-                });
-                let currKeyserverPublicKey = await openpgp.readKey({
-                    armoredKey: currKeyserverContent
-                });
+                let currMyPublicKey = (await openpgp.readKey({ armoredKey: currMyPubkeyContent })).keyPacket;
+                let currKeyserverPublicKey = (await openpgp.readKey({ armoredKey: currKeyserverContent })).keyPacket;
 
                 keyserverResultDOM.innerText = `Comparing ${purpose} from keyserver...`;
                 pubkeyResult[purpose][1] = (
-                    currMyPublicKey.keyPacket.keyID.bytes === currKeyserverPublicKey.keyPacket.keyID.bytes &&
-                    JSON.stringify(currMyPublicKey.keyPacket.fingerprint) === JSON.stringify(currKeyserverPublicKey.keyPacket.fingerprint) &&
-                    JSON.stringify(currMyPublicKey.keyPacket.publicParams.Q) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.Q) &&
-                    JSON.stringify(currMyPublicKey.keyPacket.publicParams.oid.oid) === JSON.stringify(currKeyserverPublicKey.keyPacket.publicParams.oid.oid)
+                    currMyPublicKey.keyID.bytes === currKeyserverPublicKey.keyID.bytes &&
+                    JSON.stringify(currMyPublicKey.fingerprint) === JSON.stringify(currKeyserverPublicKey.fingerprint) &&
+                    JSON.stringify(currMyPublicKey.publicParams.Q) === JSON.stringify(currKeyserverPublicKey.publicParams.Q) &&
+                    JSON.stringify(currMyPublicKey.publicParams.oid.oid) === JSON.stringify(currKeyserverPublicKey.publicParams.oid.oid)
                 );
             } catch (e) {
                 pubkeyResult[purpose][1] = false;
@@ -237,7 +268,6 @@ This script reduces down some attack surfaces, but it still posesses some existi
                 .then(r => r.commit)
             );
         }
-
 
         gitResultDOM.innerHTML = `Verifying Commit Signatures...`;
         for (let commit of gitResult.commitData) {

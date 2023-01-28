@@ -55,10 +55,12 @@
             Validator reduces down the attack surface, but this doesn't mean <a target="_blank" href="//robertchen.cc/blog/2021/04/03/github-pages-xss">it's completely secure</a>.<br>
         </p>
         <ul>
-            <li><code>Connection safe: <noscript>[You must enable JavaScript to check connection safety.]</noscript><span class="network-result">...</span></code></li>
-            <li><code>Checksums match: <noscript>[You must enable JavaScript to compare checksums.]</noscript><span class="checksum-result">...</span></code></li>
-            <li><code>Keyserver match: <noscript>[You must enable JavaScript to compare public keys with keyservers]</noscript><span class="keyserver-result">...</span></code></li>
-            <li><code>Signature match: <noscript>[You must enable JavaScript to compare commit signatures from GitHub]</noscript><span class="git-result">...</span></code></li>
+            <noscript><li>[You MUST enable JavaScript to validate keys.]</li></noscript>
+            <li><code>Connections safe: <span class="network-result">...</span></code></li>
+            <li><code>Checksums match: <span class="checksum-result">...</span></code></li>
+            <li><code>Keyservers match: <span class="keyserver-result">...</span></code></li>
+            <li><code>Issuers match: <span class="issuer-result">...</span></code></li>
+            <li><code>Signatures match: <span class="git-result">...</span></code></li>
         </ul>
         <h2>Contact</h2>
         <ul>
